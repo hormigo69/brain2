@@ -178,8 +178,19 @@ tags: [rutina]
 ---
 # Weekly review
 
-Las tareas recurrentes nunca se archivan.
+Descripción de la tarea...
+
+## History
+- 2026-01-08: Completado
+- 2026-01-01: Completado
 ```
+
+**Recurrencias soportadas**: `daily`, `weekly`, `biweekly`, `monthly`, `quarterly`, `yearly`
+
+**Automatización**: Al ejecutar `/task-management:today`, las tareas recurrentes vencidas se actualizan automáticamente:
+- Se calcula la próxima fecha según el tipo de recurrencia
+- Se añade entrada al historial con la fecha completada
+- La tarea nunca se archiva, permanece en `tasks/`
 
 ## Vistas generadas (ejemplos en español)
 
@@ -318,6 +329,11 @@ Se activa automáticamente si añades a tu CLAUDE.md:
 ```
 
 ## Mejoras sobre el original
+
+### v0.2.6 - Tareas recurrentes automáticas
+- Las tareas recurrentes se actualizan automáticamente al ejecutar `/today`
+- Calcula próxima fecha según recurrencia (daily, weekly, biweekly, monthly, quarterly, yearly)
+- Añade historial de completados en sección `## History`
 
 ### v0.2.5 - Transcripción de reuniones
 - Nuevo comando `/task-management:transcribir` para transcribir videos

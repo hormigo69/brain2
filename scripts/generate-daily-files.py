@@ -71,6 +71,18 @@ def normalize_dates():
     if stderr:
         print(f"Error: {stderr}", file=sys.stderr)
 
+def update_recurring_tasks():
+    """Run the update-recurring.py script."""
+    print("\nUpdating recurring tasks...")
+    stdout, stderr, code = run_command(f"python3 {SCRIPTS_DIR}/update-recurring.py")
+    if stdout:
+        lines = stdout.split('\n')
+        for line in lines:
+            if not line.startswith("Checking"):
+                print(line)
+    if stderr:
+        print(f"Error: {stderr}", file=sys.stderr)
+
 def calculate_weeks():
     """Get week dates from dates module."""
     print("Calculating week dates...")
@@ -420,10 +432,13 @@ def main():
     # Step 1: Normalize dates
     normalize_dates()
 
-    # Step 2: Calculate weeks
+    # Step 2: Update recurring tasks (before archiving)
+    update_recurring_tasks()
+
+    # Step 3: Calculate weeks
     dates = calculate_weeks()
 
-    # Step 3: Archive completed tasks
+    # Step 4: Archive completed tasks
     archive_completed_tasks()
 
     # Step 4: Generate files
