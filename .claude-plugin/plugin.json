@@ -1,0 +1,20 @@
+{
+  "name": "task-management",
+  "version": "0.2.3",
+  "description": "Markdown-based task management with daily/weekly views, archiving, and idea tracking. Fork with overdue tasks in weekly views.",
+  "author": {
+    "name": "Ant",
+    "email": "ant@runant.com"
+  },
+  "homepage": "https://github.com/hormigo69/brain2",
+  "repository": "https://github.com/hormigo69/brain2",
+  "keywords": [
+    "tasks",
+    "productivity",
+    "markdown",
+    "obsidian",
+    "daily-planning",
+    "weekly-review"
+  ],
+  "license": "MIT"
+}
