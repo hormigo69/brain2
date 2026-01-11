@@ -287,6 +287,16 @@ Se activa automáticamente si añades a tu CLAUDE.md:
 
 ## Créditos
 
+### Inspiración
+
+Este plugin nace de ver la entrevista [Claude Code Changed How I Work](https://youtu.be/uBJdwRPO1QE?si=h7hk4oqTdNROzAvq) donde Teresa Torres explica cómo usa Claude Code para gestionar tareas.
+
+Recursos adicionales de Teresa:
+- [Canal de YouTube](https://www.youtube.com/@ProductTalkVideos)
+- [Newsletter Product Talk](https://www.producttalk.org/)
+
+### Desarrollo
+
 - **Plugin original**: [task-management](https://github.com/ttorres33/task-management) por Teresa Torres
 - **Fork con mejoras**: [brain2](https://github.com/hormigo69/brain2)
 - **Asistente de desarrollo**: Claude (Anthropic)
