@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-Update recurring tasks that are due today or overdue.
+Update recurring tasks that have been marked as completed.
 
-For each recurring task:
-1. Check if due date is today or in the past
-2. Calculate next due date based on recurrence type
-3. Update due: field in frontmatter
+For each recurring task WITH a completed: field:
+1. Calculate next due date based on recurrence type
+2. Update due: field in frontmatter
+3. Remove completed: field from frontmatter
 4. Add completion entry to ## History section
+
+Recurring tasks WITHOUT completed: field are NOT touched,
+even if overdue - they should appear in "Atrasadas" until
+the user explicitly marks them as done.
 """
 
 import re
@@ -30,12 +34,10 @@ def calculate_next_due(current_due, recurrence, recurrence_day=None):
         next_due = due_date + timedelta(weeks=2)
     elif recurrence == 'monthly':
         if recurrence_day:
-            # Use specific day of month
             next_due = due_date + relativedelta(months=1)
             try:
                 next_due = next_due.replace(day=int(recurrence_day))
             except ValueError:
-                # Day doesn't exist in month (e.g., 31 in February)
                 pass
         else:
             next_due = due_date + relativedelta(months=1)
@@ -44,7 +46,6 @@ def calculate_next_due(current_due, recurrence, recurrence_day=None):
     elif recurrence == 'yearly':
         next_due = due_date + relativedelta(years=1)
     else:
-        # Unknown recurrence, default to weekly
         next_due = due_date + timedelta(weeks=1)
 
     # If next_due is still in the past, keep advancing until it's in the future
@@ -82,13 +83,16 @@ def parse_frontmatter(content):
     return frontmatter, body
 
 
-def update_frontmatter_due(frontmatter, new_due):
-    """Update due: field in frontmatter."""
+def update_frontmatter(frontmatter, new_due):
+    """Update due: field and remove completed: field from frontmatter."""
     lines = frontmatter.split('\n')
     new_lines = []
     for line in lines:
         if line.startswith('due:'):
             new_lines.append(f'due: {new_due}')
+        elif line.startswith('completed:'):
+            # Remove completed: field
+            continue
         else:
             new_lines.append(line)
     return '\n'.join(new_lines)
@@ -99,7 +103,6 @@ def add_history_entry(body, completed_date):
     history_pattern = r'(## History\n)(.*?)(?=\n## |\Z)'
 
     if '## History' in body:
-        # Add entry after ## History heading
         def replace_history(match):
             header = match.group(1)
             existing = match.group(2)
@@ -108,21 +111,19 @@ def add_history_entry(body, completed_date):
 
         body = re.sub(history_pattern, replace_history, body, flags=re.DOTALL)
     else:
-        # Create History section at the end
         body = body.rstrip() + f'\n\n## History\n- {completed_date}: Completado\n'
 
     return body
 
 
 def process_recurring_tasks():
-    """Process all recurring tasks and update those that are due."""
+    """Process recurring tasks that have been marked as completed."""
     tasks_dir = get_folder("tasks")
     today = datetime.now().date()
     today_str = today.strftime('%Y-%m-%d')
 
     updated = []
 
-    # Find all markdown files in tasks/
     for task_file in tasks_dir.glob('*.md'):
         content = task_file.read_text()
 
@@ -130,9 +131,20 @@ def process_recurring_tasks():
         if not frontmatter:
             continue
 
-        # Check if it's a recurring task
+        # Must be a recurring task
         if 'recurrence:' not in frontmatter:
             continue
+
+        # Must have completed: field (user marked it as done)
+        if 'completed:' not in frontmatter:
+            continue
+
+        # Extract completed date
+        completed_match = re.search(r'^completed:\s*(\d{4}-\d{2}-\d{2})', frontmatter, re.MULTILINE)
+        if not completed_match:
+            continue
+
+        completed_date = completed_match.group(1)
 
         # Extract due date
         due_match = re.search(r'^due:\s*(\d{4}-\d{2}-\d{2})', frontmatter, re.MULTILINE)
@@ -140,11 +152,6 @@ def process_recurring_tasks():
             continue
 
         due_str = due_match.group(1)
-        due_date = datetime.strptime(due_str, '%Y-%m-%d').date()
-
-        # Skip if due date is in the future
-        if due_date > today:
-            continue
 
         # Extract recurrence type
         recurrence_match = re.search(r'^recurrence:\s*(\w+)', frontmatter, re.MULTILINE)
@@ -162,11 +169,11 @@ def process_recurring_tasks():
         # Calculate next due date
         next_due = calculate_next_due(due_str, recurrence, recurrence_day)
 
-        # Update frontmatter
-        new_frontmatter = update_frontmatter_due(frontmatter, next_due)
+        # Update frontmatter (new due, remove completed)
+        new_frontmatter = update_frontmatter(frontmatter, next_due)
 
         # Add history entry
-        new_body = add_history_entry(body, due_str)
+        new_body = add_history_entry(body, completed_date)
 
         # Write updated content
         new_content = f'---\n{new_frontmatter}\n---{new_body}'
@@ -174,7 +181,7 @@ def process_recurring_tasks():
 
         updated.append({
             'file': task_file.name,
-            'old_due': due_str,
+            'completed': completed_date,
             'new_due': next_due,
             'recurrence': recurrence
         })
@@ -184,7 +191,7 @@ def process_recurring_tasks():
 
 def main():
     """Main function."""
-    print("Checking recurring tasks...")
+    print("Checking completed recurring tasks...")
 
     updated = process_recurring_tasks()
 
@@ -192,9 +199,9 @@ def main():
         print(f"Updated {len(updated)} recurring task(s):\n")
         for task in updated:
             print(f"  - {task['file']}")
-            print(f"    {task['old_due']} → {task['new_due']} ({task['recurrence']})")
+            print(f"    Completada: {task['completed']} → Próxima: {task['new_due']} ({task['recurrence']})")
     else:
-        print("No recurring tasks needed updating.")
+        print("No completed recurring tasks to update.")
 
     return updated
 

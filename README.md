@@ -187,10 +187,14 @@ Descripción de la tarea...
 
 **Recurrencias soportadas**: `daily`, `weekly`, `biweekly`, `monthly`, `quarterly`, `yearly`
 
-**Automatización**: Al ejecutar `/task-management:today`, las tareas recurrentes vencidas se actualizan automáticamente:
-- Se calcula la próxima fecha según el tipo de recurrencia
-- Se añade entrada al historial con la fecha completada
-- La tarea nunca se archiva, permanece en `tasks/`
+**Flujo de trabajo**:
+1. La tarea vencida aparece en "Atrasadas" hasta que la completes
+2. Cuando la hagas, añade `completed: YYYY-MM-DD` al frontmatter
+3. Al ejecutar `/task-management:today`:
+   - Se calcula la próxima fecha según la recurrencia
+   - Se añade entrada al historial
+   - Se elimina `completed:` (queda lista para el siguiente ciclo)
+4. La tarea nunca se archiva, permanece en `tasks/`
 
 ## Vistas generadas (ejemplos en español)
 
@@ -331,9 +335,9 @@ Se activa automáticamente si añades a tu CLAUDE.md:
 ## Mejoras sobre el original
 
 ### v0.2.6 - Tareas recurrentes automáticas
-- Las tareas recurrentes se actualizan automáticamente al ejecutar `/today`
-- Calcula próxima fecha según recurrencia (daily, weekly, biweekly, monthly, quarterly, yearly)
-- Añade historial de completados en sección `## History`
+- Las tareas recurrentes vencidas aparecen en "Atrasadas" hasta completarlas
+- Al añadir `completed:` y ejecutar `/today`: calcula próxima fecha y añade al historial
+- Soporta: daily, weekly, biweekly, monthly, quarterly, yearly
 
 ### v0.2.5 - Transcripción de reuniones
 - Nuevo comando `/task-management:transcribir` para transcribir videos
