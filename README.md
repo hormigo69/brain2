@@ -1,150 +1,302 @@
-# task-management
+# brain2 - Task Management Plugin for Claude Code
 
-A Claude Code plugin for markdown-based task management. Generates daily/weekly task views, archives completed tasks, and tracks ideas.
+Fork mejorado del plugin [task-management](https://github.com/ttorres33/task-management) de Teresa Torres, con funcionalidades adicionales para evitar que las tareas se pierdan.
 
-## Installation
+## Objetivo
 
-```bash
-claude plugins add teresa-torres-plugins/task-management
+Un sistema de gestión de tareas basado en markdown que se integra con Claude Code. Diseñado para:
+
+- **Nunca perder tareas**: Las tareas vencidas aparecen en TODAS las vistas hasta que se completen
+- **Visibilidad total**: Vistas diarias y semanales generadas automáticamente
+- **Integración con Obsidian**: Usa wiki-links `[[tarea]]` para navegación fluida
+- **Simplicidad**: Archivos markdown planos, sin base de datos
+
+## Mejoras sobre el original
+
+### Tareas vencidas en vistas semanales (v0.2.3)
+
+**Problema resuelto**: En el plugin original, si una tarea con `due: 2026-01-10` no se completaba, al día siguiente desaparecía de las vistas semanales. Solo aparecía en `today.md`.
+
+**Solución**: Ahora las tres vistas (`today.md`, `this-week.md`, `next-week.md`) muestran una sección `## Overdue` al inicio con todas las tareas vencidas:
+
+```markdown
+## Overdue
+- [ ] [[tarea-olvidada]] (due: 2026-01-05)
+- [ ] [[otra-tarea-vencida]] (due: 2026-01-08)
+
+## Tuesday, January 14
+- [ ] [[tarea-normal]]
 ```
 
-After installation, run the setup wizard:
+Las tareas vencidas **nunca desaparecen** hasta que:
+1. Se marquen como completadas
+2. Se eliminen manualmente
+3. Se cambie su fecha
+
+## Instalación
+
+### Desde GitHub (recomendado)
+
+```bash
+claude plugins add hormigo69/brain2
+```
+
+### Configuración inicial
+
+Después de instalar, ejecuta el wizard de configuración:
 
 ```
 /task-management:setup
 ```
 
-## Configuration
+Esto creará el archivo de configuración en `~/.claude/task-management-config/config.yaml`.
 
-Configuration is stored in `~/.claude/task-management-config/config.yaml`:
+## Configuración
 
 ```yaml
 paths:
-  tasks_root: "/path/to/your/Tasks"
+  tasks_root: "/ruta/a/tu/carpeta/Tasks"
 
 folders:
-  tasks: "tasks"
-  ideas: "ideas"
-  templates: "templates"
-  memories: "memories"
-  bugs: "bugs"
-  completed: "completed"
-  import: "import"
+  tasks: "tasks"          # Tareas con fecha
+  ideas: "ideas"          # Proyectos sin fecha
+  templates: "templates"  # Plantillas
+  memories: "memories"    # Material de referencia
+  bugs: "bugs"           # Issues a resolver
+  completed: "completed" # Archivo de completadas
+  import: "import"       # Bandeja de entrada
 
 links:
-  format: "obsidian"       # "obsidian" for [[wiki-links]] or "markdown" for [text](path)
+  format: "obsidian"     # "obsidian" para [[wiki-links]] o "markdown" para [texto](ruta)
 
 integrations:
-  research_system: false   # Set to true to include research digest in /today
+  research_system: false  # Integración con plugin research-system
 ```
 
-### Link Format
+### Formato de enlaces
 
-The plugin supports two link formats:
+| Formato | Ejemplo | Uso |
+|---------|---------|-----|
+| `obsidian` | `[[nombre-tarea]]` | Obsidian, Logseq, foam |
+| `markdown` | `[nombre](tasks/nombre.md)` | GitHub, editores estándar |
 
-- **obsidian** (default) - Wiki-style links: `[[task-name]]`
-- **markdown** - Standard markdown links: `[task-name](tasks/task-name.md)`
+## Comandos disponibles
 
-Choose "obsidian" if you use Obsidian or another wiki-link aware editor. Choose "markdown" for standard markdown compatibility.
+### Generación de vistas
 
-### Research System Integration
+| Comando | Descripción |
+|---------|-------------|
+| `/task-management:today` | Genera las tres vistas + archiva tareas completadas |
+| `/task-management:this-week` | Genera solo this-week.md |
+| `/task-management:next-week` | Genera solo next-week.md |
 
-If you have the `research-system` plugin installed and want `/today` to include a research digest section, set `integrations.research_system: true`.
+### Gestión
 
-## Commands
+| Comando | Descripción |
+|---------|-------------|
+| `/task-management:archive` | Mueve tareas completadas a `completed/` |
+| `/task-management:ideas` | Lista ideas por estado |
+| `/task-management:clean-imports` | Procesa archivos en `import/` |
+| `/task-management:setup` | Wizard de configuración |
+| `/task-management:about` | Muestra documentación |
 
-### `/task-management:setup`
-
-Interactive setup wizard to configure your tasks root folder and directory structure.
-
-### `/task-management:today`
-
-Generate daily task files:
-- `today.md` - Overdue tasks, tasks due today, in-progress ideas
-- `this-week.md` - Tasks for remaining days this week
-- `next-week.md` - Tasks for next week
-
-Also archives completed tasks and normalizes date formats.
-
-### `/task-management:this-week`
-
-Generate this week's task list (excluding today).
-
-### `/task-management:next-week`
-
-Generate next week's task list.
-
-### `/task-management:archive`
-
-Move completed one-time tasks from `tasks/` to `completed/`. Recurring tasks are never archived.
-
-### `/task-management:ideas`
-
-List ideas organized by status:
-- In Progress - Actively working on
-- Noodling - Exploring, might become in-progress
-
-### `/task-management:clean-imports`
-
-Move reviewed files from `import/` to their appropriate folders based on `type:` field.
-
-### `/task-management:about`
-
-Show this documentation.
-
-## Skills
-
-### `manage-tasks`
-
-Task conventions and file organization rules. Claude uses this skill when creating or modifying task files to ensure consistent formatting.
-
-To get Claude to reliably use this skill, try putting the following in your Tasks root directory CLAUDE.md: "Use the manage-tasks skill whenever creating or updating tasks."
-
-## File Structure
-
-The plugin expects this folder structure in your tasks root:
+## Estructura de carpetas
 
 ```
 Tasks/
-├── tasks/          # Items with due dates
-├── ideas/          # Projects without due dates
-├── templates/      # Reusable task templates
-├── memories/       # Reference items (not actionable)
-├── bugs/           # Issues to fix
-├── completed/      # Archived one-time tasks
-├── import/         # Staging area for triage
-├── today.md        # Generated daily
-├── this-week.md    # Generated daily
-└── next-week.md    # Generated daily
+├── tasks/           # Tareas con fecha de vencimiento
+│   ├── revisar-presupuesto.md
+│   └── llamar-cliente.md
+├── ideas/           # Proyectos sin fecha definida
+│   ├── app-gastos.md
+│   └── rediseño-web.md
+├── templates/       # Plantillas reutilizables
+│   └── weekly-review.md
+├── memories/        # Material de referencia (no accionable)
+│   └── notas-reunion.md
+├── bugs/            # Issues a resolver
+│   └── error-login.md
+├── completed/       # Archivo de tareas completadas
+│   └── 2026-01-tarea-vieja.md
+├── import/          # Bandeja de entrada para triaje
+│
+├── today.md         # Vista del día (generada)
+├── this-week.md     # Vista semanal (generada)
+└── next-week.md     # Vista próxima semana (generada)
 ```
 
-## Task File Format
+## Formato de archivos
 
-Each task is a markdown file with YAML frontmatter:
+### Tarea con fecha
 
 ```yaml
 ---
 type: task
-due: 2025-01-15
-tags: [project, urgent]
+due: 2026-01-15
+tags: [proyecto-x, urgente]
 ---
-# Task Title
+# Revisar presupuesto Q1
 
-Task content here.
+Descripción de la tarea...
 ```
 
-### Fields
+### Idea (sin fecha)
 
-**Required:**
-- `type` - task, idea, template, memory, or bug
+```yaml
+---
+type: idea
+status: in-progress
+tags: [personal, app]
+---
+# App para trackear gastos
 
-**Optional:**
-- `due: YYYY-MM-DD` - Due date (required for tasks)
-- `completed: YYYY-MM-DD` - Completion date
-- `recurrence: weekly | biweekly | monthly | quarterly | yearly`
-- `status: in-progress | noodling | someday` - For ideas only
-- `tags: [tag1, tag2]` - Categorization
+Notas y desarrollo de la idea...
+```
 
-## License
+### Tarea recurrente
+
+```yaml
+---
+type: task
+due: 2026-01-15
+recurrence: weekly
+tags: [rutina]
+---
+# Weekly review
+
+Las tareas recurrentes nunca se archivan.
+```
+
+## Campos del frontmatter
+
+| Campo | Valores | Obligatorio | Descripción |
+|-------|---------|-------------|-------------|
+| `type` | task, idea, template, memory, bug | Sí | Tipo de archivo |
+| `due` | YYYY-MM-DD | Para tasks | Fecha de vencimiento |
+| `completed` | YYYY-MM-DD | No | Fecha de completado |
+| `recurrence` | weekly, biweekly, monthly, quarterly, yearly | No | Frecuencia de repetición |
+| `status` | in-progress, noodling, someday | Para ideas | Estado actual |
+| `tags` | [tag1, tag2] | No | Categorización |
+
+## Flujo de trabajo típico
+
+### Diario
+
+1. Ejecutar `/task-management:today`
+2. Revisar `today.md`:
+   - **Overdue**: Tareas que debían estar hechas
+   - **Due Today**: Lo que toca hoy
+   - **In Progress Ideas**: Proyectos activos
+3. Trabajar las tareas
+4. Marcar completadas añadiendo `completed: YYYY-MM-DD`
+
+### Semanal
+
+1. Revisar `this-week.md` para planificar
+2. Consultar `next-week.md` para anticipar
+3. Ejecutar `/task-management:archive` para limpiar completadas
+
+## Vistas generadas
+
+### today.md
+
+```markdown
+---
+date: 2026-01-11
+---
+# Today - Sunday, January 11
+
+## Overdue
+- [ ] [[tarea-vencida]] (due: 2026-01-05)
+
+## Due Today
+- [ ] [[revisar-presupuesto]]
+- [ ] [[llamar-cliente]]
+
+## In Progress Ideas
+- [[app-gastos]]
+- [[rediseño-web]]
+```
+
+### this-week.md
+
+```markdown
+---
+week_start: 2026-01-05
+week_end: 2026-01-11
+---
+# This Week - Week ending January 11
+
+## Overdue
+- [ ] [[tarea-vencida]] (due: 2026-01-05)
+
+## Friday, January 9
+- [ ] [[reunion-equipo]]
+
+## Saturday, January 10
+- [ ] [[weekly-review]]
+```
+
+### next-week.md
+
+```markdown
+---
+week_start: 2026-01-12
+week_end: 2026-01-18
+---
+# Next Week - Week of January 12
+
+## Overdue
+- [ ] [[tarea-vencida]] (due: 2026-01-05)
+
+## Monday, January 12
+- [ ] [[planificacion-sprint]]
+
+## Wednesday, January 14
+- [ ] [[presentacion-cliente]]
+```
+
+## Skills incluidos
+
+### manage-tasks
+
+Skill que Claude usa automáticamente al crear o modificar tareas. Asegura formato consistente.
+
+Para activarlo, añade a tu `CLAUDE.md`:
+
+```markdown
+**Al crear o actualizar tareas:** Use the manage-tasks skill.
+```
+
+## Integración con Google Calendar
+
+Este plugin genera vistas de tareas. Para integrar con calendario:
+
+1. Usa el MCP de Google Workspace en Claude Code
+2. Añade a tu `tasks/CLAUDE.md`:
+
+```markdown
+**DESPUÉS de ejecutar el script de generación:**
+1. Consultar Google Calendar para las fechas relevantes
+2. Añadir sección "## Calendario" al inicio de today.md
+```
+
+## Créditos
+
+- **Plugin original**: [task-management](https://github.com/ttorres33/task-management) por Teresa Torres
+- **Fork con mejoras**: [brain2](https://github.com/hormigo69/brain2) por Ant
+- **Asistente de desarrollo**: Claude (Anthropic)
+
+## Licencia
 
 MIT
+
+## Changelog
+
+### v0.2.3 (2026-01-11)
+- Añadida sección "Overdue" a `this-week.md`
+- Añadida sección "Overdue" a `next-week.md`
+- Las tareas vencidas ya no se pierden de las vistas semanales
+
+### v0.2.2 (original)
+- Versión base de ttorres33/task-management
