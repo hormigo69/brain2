@@ -26,6 +26,32 @@ TASKS_DIR = get_folder("tasks")
 IDEAS_DIR = get_folder("ideas")
 SCRIPTS_DIR = Path(__file__).parent
 
+# Spanish translations
+DIAS_SEMANA = {
+    'Monday': 'Lunes',
+    'Tuesday': 'Martes',
+    'Wednesday': 'Miércoles',
+    'Thursday': 'Jueves',
+    'Friday': 'Viernes',
+    'Saturday': 'Sábado',
+    'Sunday': 'Domingo'
+}
+
+MESES = {
+    'January': 'enero',
+    'February': 'febrero',
+    'March': 'marzo',
+    'April': 'abril',
+    'May': 'mayo',
+    'June': 'junio',
+    'July': 'julio',
+    'August': 'agosto',
+    'September': 'septiembre',
+    'October': 'octubre',
+    'November': 'noviembre',
+    'December': 'diciembre'
+}
+
 def run_command(cmd, cwd=None):
     """Run a shell command and return output."""
     result = subprocess.run(
@@ -196,8 +222,28 @@ def generate_days_between(start_date, end_date):
     return days
 
 def format_date_header(date):
-    """Format date as 'Monday, October 7'."""
-    return date.strftime('%A, %B %-d')
+    """Format date as 'Lunes, 12 de enero' (Spanish)."""
+    weekday_en = date.strftime('%A')
+    month_en = date.strftime('%B')
+    day = date.day
+
+    weekday_es = DIAS_SEMANA.get(weekday_en, weekday_en)
+    month_es = MESES.get(month_en, month_en)
+
+    return f"{weekday_es}, {day} de {month_es}"
+
+def format_week_range(start_date, end_date):
+    """Format week range as 'del 5 al 11 de enero' (Spanish)."""
+    start = datetime.strptime(start_date, '%Y-%m-%d')
+    end = datetime.strptime(end_date, '%Y-%m-%d')
+
+    start_month_es = MESES.get(start.strftime('%B'), start.strftime('%B'))
+    end_month_es = MESES.get(end.strftime('%B'), end.strftime('%B'))
+
+    if start_month_es == end_month_es:
+        return f"del {start.day} al {end.day} de {end_month_es}"
+    else:
+        return f"del {start.day} de {start_month_es} al {end.day} de {end_month_es}"
 
 
 def format_link(filename, folder=None):
@@ -226,28 +272,28 @@ def generate_today_md(dates):
 
     # Generate content
     content = f"---\ndate: {today}\n---\n"
-    content += f"# Today - {format_date_header(today_datetime)}\n\n"
+    content += f"# Hoy - {format_date_header(today_datetime)}\n\n"
 
     if overdue:
-        content += "## Overdue\n"
+        content += "## Atrasadas\n"
         for filename, due_date in overdue:
             content += f"- [ ] {format_link(filename, 'tasks')} (due: {due_date})\n"
         content += "\n"
 
-    content += "## Due Today\n"
+    content += "## Tareas\n"
     if due_today:
         for filename in due_today:
             content += f"- [ ] {format_link(filename, 'tasks')}\n"
     content += "\n"
 
     if ideas:
-        content += "## In Progress Ideas\n"
+        content += "## Ideas en progreso\n"
         for filename in ideas:
             content += f"- {format_link(filename, 'ideas')}\n"
         content += "\n"
 
     if research:
-        content += "## Research\n"
+        content += "## Investigación\n"
         for filename in research:
             content += f"- [ ] {format_link(filename, 'tasks')}\n"
 
@@ -267,6 +313,7 @@ def generate_this_week_md(dates):
     # Get dates
     today = dates['today']
     tomorrow = dates['tomorrow']
+    week_start = dates['this_week_start']
     week_end = dates['this_week_end']
 
     # Check if there are any days left this week
@@ -278,14 +325,14 @@ def generate_this_week_md(dates):
 
     if tomorrow_date > week_end_date:
         print("  - No days remaining this week")
-        content = f"---\nweek_start: {dates['this_week_start']}\nweek_end: {week_end}\n---\n"
-        content += f"# This Week - Week ending {datetime.strptime(week_end, '%Y-%m-%d').strftime('%B %-d')}\n\n"
+        content = f"---\nweek_start: {week_start}\nweek_end: {week_end}\n---\n"
+        content += f"# Esta semana - Semana {format_week_range(week_start, week_end)}\n\n"
         if overdue:
-            content += "## Overdue\n"
+            content += "## Atrasadas\n"
             for filename, due_date in overdue:
                 content += f"- [ ] {format_link(filename, 'tasks')} (due: {due_date})\n"
             content += "\n"
-        content += "No tasks remaining this week.\n"
+        content += "No quedan tareas esta semana.\n"
         with open(BASE_DIR / "this-week.md", 'w') as f:
             f.write(content)
         return
@@ -294,12 +341,12 @@ def generate_this_week_md(dates):
     days = generate_days_between(tomorrow, week_end)
 
     # Generate content
-    content = f"---\nweek_start: {dates['this_week_start']}\nweek_end: {week_end}\n---\n"
-    content += f"# This Week - Week ending {week_end_date.strftime('%B %-d')}\n\n"
+    content = f"---\nweek_start: {week_start}\nweek_end: {week_end}\n---\n"
+    content += f"# Esta semana - Semana {format_week_range(week_start, week_end)}\n\n"
 
     # Add overdue section if there are overdue tasks
     if overdue:
-        content += "## Overdue\n"
+        content += "## Atrasadas\n"
         for filename, due_date in overdue:
             content += f"- [ ] {format_link(filename, 'tasks')} (due: {due_date})\n"
         content += "\n"
@@ -338,13 +385,12 @@ def generate_next_week_md(dates):
     days = generate_days_between(week_start, week_end)
 
     # Generate content
-    week_start_date = datetime.strptime(week_start, '%Y-%m-%d')
     content = f"---\nweek_start: {week_start}\nweek_end: {week_end}\n---\n"
-    content += f"# Next Week - Week of {week_start_date.strftime('%B %-d')}\n\n"
+    content += f"# Próxima semana - Semana {format_week_range(week_start, week_end)}\n\n"
 
     # Add overdue section if there are overdue tasks
     if overdue:
-        content += "## Overdue\n"
+        content += "## Atrasadas\n"
         for filename, due_date in overdue:
             content += f"- [ ] {format_link(filename, 'tasks')} (due: {due_date})\n"
         content += "\n"
