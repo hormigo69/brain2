@@ -1,7 +1,7 @@
 {
   "name": "task-management",
-  "version": "0.2.4",
-  "description": "Markdown-based task management with daily/weekly views, archiving, and idea tracking. Fork with overdue tasks in weekly views.",
+  "version": "0.2.5",
+  "description": "Markdown-based task management with daily/weekly views, archiving, meeting transcription, and idea tracking.",
   "author": {
     "name": "Ant",
     "email": "ant@runant.com"
@@ -14,7 +14,9 @@
     "markdown",
     "obsidian",
     "daily-planning",
-    "weekly-review"
+    "weekly-review",
+    "transcription",
+    "meetings"
   ],
   "license": "MIT"
 }

@@ -66,6 +66,48 @@ Las vistas incluirán automáticamente los eventos:
 - [ ] [[llamar-proveedor]]
 ```
 
+## Transcripción de reuniones (opcional)
+
+Transcribe videos de reuniones usando la API de Gladia con identificación de hablantes.
+
+### 1. Instalar dependencias
+
+```bash
+brew install ffmpeg jq
+```
+
+### 2. Configurar API key de Gladia
+
+```bash
+# Obtén tu API key en https://app.gladia.io/
+echo "GLADIA_API_KEY=tu_api_key" > ~/.claude/task-management-config/gladia.env
+```
+
+### 3. Usar
+
+```bash
+/task-management:transcribir ~/Desktop/reunion.mov
+```
+
+### Resultado
+
+Se genera un archivo markdown con la transcripción:
+
+```markdown
+# Reunión: kickoff proyecto
+- **Fecha**: 2026-01-11 10:30
+- **Duración**: 45 min
+- **Archivo origen**: reunion.mov
+
+---
+
+## Transcripción
+
+**Speaker 0:** Buenos días, empezamos con el kickoff...
+
+**Speaker 1:** Perfecto, tengo preparada la presentación...
+```
+
 ## Comandos disponibles
 
 | Comando | Descripción |
@@ -76,6 +118,7 @@ Las vistas incluirán automáticamente los eventos:
 | `/task-management:next-week` | Genera vista de la próxima semana |
 | `/task-management:archive` | Mueve tareas completadas a `completed/` |
 | `/task-management:ideas` | Lista ideas por estado |
+| `/task-management:transcribir` | Transcribe videos de reuniones con IA |
 | `/task-management:about` | Muestra documentación |
 
 ## Estructura de carpetas
@@ -275,6 +318,11 @@ Se activa automáticamente si añades a tu CLAUDE.md:
 ```
 
 ## Mejoras sobre el original
+
+### v0.2.5 - Transcripción de reuniones
+- Nuevo comando `/task-management:transcribir` para transcribir videos
+- Usa API de Gladia con identificación de hablantes (diarización)
+- Genera markdown con la transcripción formateada
 
 ### v0.2.4 - Localización español
 - Fechas en formato "Lunes, 12 de enero"
