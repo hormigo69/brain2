@@ -113,6 +113,7 @@ Se genera un archivo markdown con la transcripción:
 | Comando | Descripción |
 |---------|-------------|
 | `/task-management:setup` | Wizard de configuración inicial |
+| `/task-management:estado` | Resumen rápido del estado actual |
 | `/task-management:today` | Genera vista del día + archiva completadas |
 | `/task-management:this-week` | Genera vista de la semana actual |
 | `/task-management:next-week` | Genera vista de la próxima semana |
