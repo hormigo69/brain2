@@ -49,7 +49,15 @@ ls ~/.claude/plugins/research-system 2>/dev/null || ls -d ~/*/cc-plugins/researc
 
 If found, ask the user if they want to enable the research-system integration (adds research digest to /today output).
 
-### Step 5: Validate Path
+### Step 5: Ask about Google Calendar Integration
+
+Ask the user if they want to integrate with Google Calendar. If yes:
+1. Ask for their Google email address
+2. Inform them they need to install the Google Workspace MCP:
+   - Repository: https://github.com/taylorwilsdon/google_workspace_mcp
+   - This enables Gmail, Calendar, and Drive access from Claude Code
+
+### Step 6: Validate Path
 
 Verify the tasks root path exists:
 
@@ -59,13 +67,13 @@ ls -la "<tasks_root_path>"
 
 If it doesn't exist, ask if the user wants to create it.
 
-### Step 6: Create Config Directory
+### Step 7: Create Config Directory
 
 ```bash
 mkdir -p ~/.claude/task-management-config
 ```
 
-### Step 7: Write Config File
+### Step 8: Write Config File
 
 Create `~/.claude/task-management-config/config.yaml` with the user's settings:
 
@@ -87,9 +95,11 @@ links:
 
 integrations:
   research_system: <true or false>
+  google_calendar: <true or false>
+  google_email: "<user's email if provided>"
 ```
 
-### Step 8: Verify Setup
+### Step 9: Verify Setup
 
 Confirm the config was written:
 
@@ -97,40 +107,135 @@ Confirm the config was written:
 cat ~/.claude/task-management-config/config.yaml
 ```
 
-### Step 9: Create Missing Folders
+### Step 10: Create All Folders
 
-Check which folders exist and offer to create missing ones:
+Create ALL folders automatically (don't ask, just create them):
 
 ```bash
-ls -la "<tasks_root>"
+mkdir -p "<tasks_root>/tasks"
+mkdir -p "<tasks_root>/ideas"
+mkdir -p "<tasks_root>/templates"
+mkdir -p "<tasks_root>/memories"
+mkdir -p "<tasks_root>/bugs"
+mkdir -p "<tasks_root>/completed"
+mkdir -p "<tasks_root>/import"
+mkdir -p "<tasks_root>/inbox"
 ```
 
-For any missing folders from the config, ask if user wants to create them.
+### Step 11: Create CLAUDE.md
+
+Create a CLAUDE.md file in the tasks root with basic instructions:
+
+```markdown
+# Tasks - Sistema de gestion de tareas
+
+## Comandos disponibles
+
+- `/task-management:today` - Genera vista del dia + archiva tareas completadas
+- `/task-management:this-week` - Genera vista de la semana
+- `/task-management:next-week` - Genera vista de proxima semana
+- `/task-management:archive` - Archiva tareas completadas
+- `/task-management:ideas` - Lista ideas por estado
+
+## Al crear o actualizar tareas
+
+Use the manage-tasks skill.
+
+## Estructura de carpetas
+
+| Carpeta | Proposito |
+|---------|-----------|
+| `tasks/` | Tareas con fecha de vencimiento |
+| `ideas/` | Proyectos sin fecha definida |
+| `templates/` | Plantillas reutilizables |
+| `memories/` | Material de referencia (no accionable) |
+| `bugs/` | Issues a resolver |
+| `completed/` | Tareas archivadas |
+| `inbox/` | Captura rapida |
+
+## Formato de tareas
+
+```yaml
+---
+type: task
+due: YYYY-MM-DD
+tags: [tag1, tag2]
+---
+# Titulo de la tarea
+
+Descripcion...
+```
+```
+
+If Google Calendar integration is enabled, add this section to CLAUDE.md:
+
+```markdown
+## Integracion con Google Calendar
+
+**Email:** <user's email>
+
+**DESPUES de ejecutar el script de generacion:**
+1. Consultar Google Calendar para las fechas relevantes
+2. Añadir seccion "## Calendario" al inicio del archivo generado
+3. Formato: `- HH:MM-HH:MM - Nombre del evento`
+```
+
+### Step 12: Create Example Task
+
+Create an example task file to help the user get started:
+
+```bash
+# Create example task
+cat > "<tasks_root>/tasks/ejemplo-tarea.md" << 'EOF'
+---
+type: task
+due: <tomorrow's date in YYYY-MM-DD>
+tags: [ejemplo]
+---
+# Tarea de ejemplo
+
+Esta es una tarea de ejemplo. Puedes:
+- Editarla o eliminarla
+- Usarla como referencia para crear nuevas tareas
+
+Para completarla, añade `completed: YYYY-MM-DD` al frontmatter.
+EOF
+```
 
 ## Example Output
 
 ```
-Task Management Setup Complete!
+=== Task Management Setup Complete! ===
 
-Configuration saved to: ~/.claude/task-management-config/config.yaml
+Configuracion guardada en: ~/.claude/task-management-config/config.yaml
 
-Tasks root: /Users/ttorres/Vaults/Work/Tasks
-Link format: obsidian
-Research integration: enabled
+Directorio raiz: /Users/username/Documents/Tasks
+Formato de enlaces: obsidian
+Integracion Google Calendar: habilitada
 
-Folders:
-  - tasks/       (exists)
-  - ideas/       (exists)
-  - templates/   (exists)
-  - memories/    (exists)
-  - bugs/        (exists)
-  - completed/   (exists)
-  - import/      (exists)
+Carpetas creadas:
+  - tasks/
+  - ideas/
+  - templates/
+  - memories/
+  - bugs/
+  - completed/
+  - import/
+  - inbox/
 
-You can now use:
-  /task-management:today    - Generate daily task files
-  /task-management:archive  - Archive completed tasks
-  /task-management:ideas    - List ideas by status
+Archivos creados:
+  - CLAUDE.md (instrucciones para Claude)
+  - tasks/ejemplo-tarea.md (tarea de ejemplo)
 
-To get Claude to reliably use the manage-tasks skill when creating and updating tasks, add the following to your CLAUDE.md in your Tasks root directory: "Use the manage-tasks skill whenever creating or updating tasks."
+=== Siguientes pasos ===
+
+1. Si habilitaste Google Calendar, instala el MCP:
+   https://github.com/taylorwilsdon/google_workspace_mcp
+
+2. Ejecuta tu primer comando:
+   /task-management:today
+
+3. Crea tareas nuevas en tasks/ con el formato YAML mostrado
+
+Para mas informacion: /task-management:about
 ```
