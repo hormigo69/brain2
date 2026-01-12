@@ -333,7 +333,28 @@ Se activa automáticamente si añades a tu CLAUDE.md:
 **Al crear o actualizar tareas:** Use the manage-tasks skill.
 ```
 
+## Sistema de Inbox
+
+Captura rápida de tareas desde móvil usando atajos de iOS/Android que añaden líneas a `inbox/inbox.md`:
+
+```
+2026-01-11-104756 - Llamar a Pedro
+2026-01-11-104838 - Revisar documento para el viernes
+```
+
+Al ejecutar `/task-management:today`:
+1. Se procesan las entradas del inbox
+2. Se interpretan fechas en lenguaje natural ("mañana", "viernes", "próxima semana")
+3. Se muestran para confirmación antes de crear archivos
+4. Se eliminan duplicados automáticamente
+
 ## Mejoras sobre el original
+
+### v0.2.7 - Inbox y calendario integrados
+- Procesamiento automático del inbox antes de generar vistas
+- Integración con Google Calendar (configurable)
+- Detección de duplicados en inbox
+- Interpretación de fechas en español
 
 ### v0.2.6 - Tareas recurrentes automáticas
 - Las tareas recurrentes vencidas aparecen en "Atrasadas" hasta completarlas

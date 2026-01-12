@@ -4,11 +4,48 @@ description: Generate today.md, this-week.md, and next-week.md files
 
 # today
 
-Generate today.md, this-week.md, and next-week.md files.
+Generate today.md, this-week.md, and next-week.md files with inbox processing and calendar integration.
 
 ## Process
 
-### Step 1: Generate Daily Task Files
+### Step 1: Process Inbox
+
+**Check for entries in `${TASKS_ROOT}/inbox/inbox.md`:**
+
+1. Read the inbox file
+2. If empty, skip to Step 2
+3. If entries exist, interpret each line:
+   - Detect dates (hoy, mañana, viernes, próxima semana, etc.)
+   - Detect type (task vs idea - "idea:" prefix or "sin fecha" = idea)
+   - Infer tags from context
+
+4. Show summary table to user:
+```
+┌─────────────────────────────────────────────────────────────┐
+│ INBOX: N entradas encontradas                               │
+├─────────────────────────────────────────────────────────────┤
+│ 1. "Título interpretado"                                    │
+│    → Tarea | due: YYYY-MM-DD | tags: [x, y]                 │
+│                                                             │
+│ 2. "Otra entrada"                                           │
+│    → Idea | status: someday | tags: [z]                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+5. Ask user: "¿Proceso estas entradas? (sí/no/editar)"
+6. Check if any entries already exist as files in tasks/ or ideas/ - remove duplicates from inbox
+7. With approval, create files and clear processed entries from inbox
+
+**Date interpretation rules:**
+- No temporal hint → Idea (no date)
+- "urgente"/"hoy" → today
+- "mañana" → tomorrow
+- "esta semana" → Friday
+- "próxima semana" → next Monday
+- "viernes", "para el 15" → specific date
+- Ambiguous → Ask user
+
+### Step 2: Generate Daily Task Files
 
 Run the generate-daily-files.py script:
 
@@ -23,7 +60,26 @@ This script will:
 4. Grep for tasks by specific dates
 5. Generate all three files (today.md, this-week.md, next-week.md)
 
-### Step 2: Generate Research Digest (Optional)
+### Step 3: Add Calendar Events
+
+**Only if `calendar.enabled` is `true` in `~/.claude/task-management-config/config.yaml`:**
+
+1. Use the Google Calendar MCP tool to fetch events:
+   - For today.md: fetch events for today
+   - For this-week.md: fetch events for rest of week
+   - For next-week.md: fetch events for next week
+
+2. Add "## Calendario" section to today.md (after frontmatter, before tasks):
+```markdown
+## Calendario
+- 📌 All-day event name
+- 09:00-10:00 - Event name
+- 14:00-15:30 - Another event
+```
+
+3. For this-week.md and next-week.md, add "### Calendario" subsection under each day heading, before "### Tareas"
+
+### Step 4: Generate Research Digest (Optional)
 
 **Only if `integrations.research_system` is `true` in `~/.claude/task-management-config/config.yaml`:**
 
@@ -40,23 +96,22 @@ This script will:
 ---
 date: 2025-10-03
 ---
-# Today - Thursday, October 3
+# Hoy - Jueves, 3 de octubre
 
-## Overdue
+## Calendario
+- 📌 Recordatorio importante
+- 09:00-10:00 - Weekly team sync
+- 14:00-15:00 - Client meeting
+
+## Atrasadas
 - [ ] [[old-task]] (due: 2025-09-30)
-- [ ] [[another-overdue]] (due: 2025-10-01)
 
-## Due Today
+## Tareas
 - [ ] [[give-dog-flea-medicine]]
-- [ ] [[bbc-sale]]
 - [ ] [[schedule-grooming-loosa]]
 
-## In Progress Ideas
+## Ideas en progreso
 - [[next-ai-project]]
-- [[course-redesign]]
-
-## Research
-- [ ] [Review today's research digest](Research/research-today.md)
 ```
 
 ## Example Output - this-week.md
@@ -66,12 +121,17 @@ date: 2025-10-03
 week_start: 2025-10-04
 week_end: 2025-10-06
 ---
-# This Week - Week ending October 6
+# Esta semana - Semana del 4 al 6 de octubre
 
-## Friday, October 4
+## Viernes, 4 de octubre
+### Calendario
+- 10:00-11:00 - Sprint planning
+
+### Tareas
 - [ ] [[client-meeting]]
 
-## Saturday, October 5
+## Sábado, 5 de octubre
+### Tareas
 - [ ] [[weekly-review]]
 ```
 
@@ -82,11 +142,16 @@ week_end: 2025-10-06
 week_start: 2025-10-07
 week_end: 2025-10-13
 ---
-# Next Week - Week of October 7
+# Próxima semana - Semana del 7 al 13 de octubre
 
-## Monday, October 7
+## Lunes, 7 de octubre
+### Calendario
+- 09:00-10:00 - Quarterly planning kickoff
+
+### Tareas
 - [ ] [[quarterly-planning]]
 
-## Wednesday, October 9
+## Miércoles, 9 de octubre
+### Tareas
 - [ ] [[team-sync]]
 ```

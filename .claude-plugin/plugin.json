@@ -1,7 +1,7 @@
 {
   "name": "task-management",
-  "version": "0.2.6",
-  "description": "Markdown-based task management with daily/weekly views, archiving, meeting transcription, and idea tracking.",
+  "version": "0.2.7",
+  "description": "Markdown-based task management with daily/weekly views, inbox processing, Google Calendar integration, meeting transcription, and idea tracking.",
   "author": {
     "name": "Ant",
     "email": "ant@runant.com"
@@ -16,7 +16,9 @@
     "daily-planning",
     "weekly-review",
     "transcription",
-    "meetings"
+    "meetings",
+    "inbox",
+    "calendar"
   ],
   "license": "MIT"
 }
