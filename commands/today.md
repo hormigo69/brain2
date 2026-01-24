@@ -8,13 +8,17 @@ Generate today.md, this-week.md, and next-week.md files with inbox processing an
 
 ## Process
 
-### Step 1: Process Inbox
+### Step 1: Process Mobile Inbox
 
-**Check for entries in `${TASKS_ROOT}/inbox/inbox.md`:**
+**Check for entries in the mobile inbox file (configured in `paths.mobile_inbox` in config.yaml):**
 
-1. Read the inbox file
-2. If empty, skip to Step 2
-3. If entries exist, interpret each line:
+Default location: `~/Library/Mobile Documents/com~apple~CloudDocs/inbox.md`
+
+This file is populated by an iOS Shortcut that allows quick task capture from the phone.
+
+1. Read the mobile inbox file from `paths.mobile_inbox`
+2. If file doesn't exist or is empty, skip to Step 2
+3. If entries exist, interpret each line (format: `- [ ] text [capturado: YYYY-MM-DD]`):
    - Detect dates (hoy, mañana, viernes, próxima semana, etc.)
    - Detect type (task vs idea - "idea:" prefix or "sin fecha" = idea)
    - Infer tags from context
@@ -60,35 +64,85 @@ This script will:
 4. Grep for tasks by specific dates
 5. Generate all three files (today.md, this-week.md, next-week.md)
 
-### Step 3: Add Calendar Events
+### Step 3: Add Calendar Events (MANDATORY)
 
-**Only if `calendar.enabled` is `true` in `~/.claude/task-management-config/config.yaml`:**
+**Read config from `~/.claude/task-management-config/config.yaml` to get:**
+- `calendar.enabled` (boolean)
+- `calendar.google_email` (string)
 
-1. Use the Google Calendar MCP tool to fetch events:
-   - For today.md: fetch events for today
-   - For this-week.md: fetch events for rest of week
-   - For next-week.md: fetch events for next week
+**If `calendar.enabled` is `true`, you MUST complete these steps:**
 
-2. Add "## Calendario" section to today.md (after frontmatter, before tasks):
+#### 3.1 Fetch Calendar Events
+
+Use the Google Calendar MCP tool `mcp__google_workspace__get_events` with:
+- `user_google_email`: value from `calendar.google_email`
+- Make THREE parallel calls for efficiency:
+  1. Today: `time_min` = today, `time_max` = tomorrow
+  2. Rest of week: `time_min` = tomorrow, `time_max` = end of week + 1 day
+  3. Next week: `time_min` = next week start, `time_max` = next week end + 1 day
+
+#### 3.2 Format Events
+
+For each event, format as:
+- All-day events: `- 📌 Event name`
+- Timed events: `- HH:MM-HH:MM - Event name`
+
+Sort events by start time within each day.
+
+#### 3.3 Insert Calendar into today.md
+
+**IMMEDIATELY after the `# Hoy - ...` header line, insert:**
+
 ```markdown
+
 ## Calendario
-- 📌 All-day event name
-- 09:00-10:00 - Event name
-- 14:00-15:30 - Another event
+- 08:00-10:00 - Event 1
+- 14:00-15:00 - Event 2
+
 ```
 
-3. For this-week.md and next-week.md, add "### Calendario" subsection under each day heading, before "### Tareas"
+Use the Edit tool to insert after the header line.
+
+#### 3.4 Insert Calendar into this-week.md and next-week.md
+
+For EACH day section that has events, transform:
+
+```markdown
+## Lunes, 26 de enero
+- [ ] [[task-1]]
+```
+
+Into:
+
+```markdown
+## Lunes, 26 de enero
+### Calendario
+- 09:00-10:00 - Event 1
+
+### Tareas
+- [ ] [[task-1]]
+```
+
+**IMPORTANT:**
+- Only add `### Calendario` if there are events for that day
+- Always add `### Tareas` header before the task list when adding calendar
+- Days without events keep their current format (no changes needed)
+
+#### 3.5 Verification
+
+After inserting calendar, read each file to verify:
+- [ ] today.md has `## Calendario` section
+- [ ] this-week.md has `### Calendario` for days with events
+- [ ] next-week.md has `### Calendario` for days with events
+
+If any verification fails, fix it before completing.
 
 ### Step 4: Generate Research Digest (Optional)
 
-**Only if `integrations.research_system` is `true` in `~/.claude/task-management-config/config.yaml`:**
+**Only if `integrations.research_system` is `true` in config.yaml:**
 
-1. Run the research digest slash command:
-   ```
-   SlashCommand: /research-system:generate-research-digest
-   ```
-
-2. Add a Research section to today.md (after "In Progress Ideas" section) using the `links.format` setting from config.
+1. Run: `/research-system:generate-research-digest`
+2. Add Research section to today.md after "Ideas en progreso"
 
 ## Example Output - today.md
 
@@ -103,15 +157,18 @@ date: 2025-10-03
 - 09:00-10:00 - Weekly team sync
 - 14:00-15:00 - Client meeting
 
-## Atrasadas
-- [ ] [[old-task]] (due: 2025-09-30)
+## Trabajo
 
-## Tareas
-- [ ] [[give-dog-flea-medicine]]
-- [ ] [[schedule-grooming-loosa]]
+### Proyecto
+- [ ] [[task-1]]
+
+## Personal
+
+### Admin
+- [ ] [[task-2]]
 
 ## Ideas en progreso
-- [[next-ai-project]]
+- [[idea-1]]
 ```
 
 ## Example Output - this-week.md
@@ -122,6 +179,9 @@ week_start: 2025-10-04
 week_end: 2025-10-06
 ---
 # Esta semana - Semana del 4 al 6 de octubre
+
+## Atrasadas
+- [ ] [[old-task]] (due: 2025-10-01)
 
 ## Viernes, 4 de octubre
 ### Calendario
@@ -143,6 +203,9 @@ week_start: 2025-10-07
 week_end: 2025-10-13
 ---
 # Próxima semana - Semana del 7 al 13 de octubre
+
+## Atrasadas
+- [ ] [[old-task]] (due: 2025-10-01)
 
 ## Lunes, 7 de octubre
 ### Calendario
