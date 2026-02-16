@@ -4,67 +4,150 @@ description: Generate today.md, this-week.md, and next-week.md files
 
 # today
 
-Generate today.md, this-week.md, and next-week.md files with inbox processing and calendar integration.
+Generate today.md, this-week.md, and next-week.md files from Google Tasks with calendar integration.
+
+**Source of truth: Google Tasks** (migrated feb 2026). Do NOT use Python scripts or local .md task files.
 
 ## Process
 
-### Step 1: Process Mobile Inbox
+### Step 1: Fetch Tasks from Google Tasks
 
-**Check for entries in the mobile inbox file (configured in `paths.mobile_inbox` in config.yaml):**
+**IMPORTANT: Use `date` command to get today's date. Never calculate day-of-week mentally.**
 
-Default location: `~/Library/Mobile Documents/com~apple~CloudDocs/inbox.md`
+Run `date "+%Y-%m-%d %A %u"` to get today's date, day name, and day-of-week number (1=Monday).
 
-This file is populated by an iOS Shortcut that allows quick task capture from the phone.
+Then fetch tasks from Google Tasks. Make 4 PARALLEL calls to `mcp__google_workspace__list_tasks`:
 
-1. Read the mobile inbox file from `paths.mobile_inbox`
-2. If file doesn't exist or is empty, skip to Step 2
-3. If entries exist, interpret each line (format: `- [ ] text [capturado: YYYY-MM-DD]`):
-   - Detect dates (hoy, mañana, viernes, próxima semana, etc.)
-   - Detect type (task vs idea - "idea:" prefix or "sin fecha" = idea)
-   - Infer tags from context
+1. **Cloud District** — `task_list_id: "Wk1leGlhdy1kdm1kSVRuaA"`, `show_completed: false`
+2. **Profesional** — `task_list_id: "elpCaENDeGxBQ21xN3BUMQ"`, `show_completed: false`
+3. **Personal** — `task_list_id: "VklQWXBOSl9FeDRRZzRHUw"`, `show_completed: false`
+4. **Inbox** — `task_list_id: "UUMwNExCdFd3N0o0bE9kWA"`, `show_completed: false`
 
-4. Show summary table to user:
-```
-┌─────────────────────────────────────────────────────────────┐
-│ INBOX: N entradas encontradas                               │
-├─────────────────────────────────────────────────────────────┤
-│ 1. "Título interpretado"                                    │
-│    → Tarea | due: YYYY-MM-DD | tags: [x, y]                 │
-│                                                             │
-│ 2. "Otra entrada"                                           │
-│    → Idea | status: someday | tags: [z]                     │
-└─────────────────────────────────────────────────────────────┘
-```
+### Step 2: Calculate Date Ranges
 
-5. Ask user: "¿Proceso estas entradas? (sí/no/editar)"
-6. Check if any entries already exist as files in tasks/ or ideas/ - remove duplicates from inbox
-7. With approval, create files and clear processed entries from inbox
+Using today's date from Step 1:
 
-**Date interpretation rules:**
-- No temporal hint → Idea (no date)
-- "urgente"/"hoy" → today
-- "mañana" → tomorrow
-- "esta semana" → Friday
-- "próxima semana" → next Monday
-- "viernes", "para el 15" → specific date
-- Ambiguous → Ask user
+- **Today**: exact date match
+- **This week**: from tomorrow through Sunday of current week
+- **Next week**: Monday through Sunday of next week
+- **Overdue**: any task with `due` < today
 
-### Step 2: Generate Daily Task Files
-
-Run the generate-daily-files.py script:
-
+Use `date` commands to calculate the exact dates. Example:
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/generate-daily-files.py
+# End of this week (Sunday)
+date -v+sunday -j "+%Y-%m-%d"
+# Next Monday
+date -v+monday -j -v+1w "+%Y-%m-%d"
+# Next Sunday
+date -v+sunday -j -v+1w "+%Y-%m-%d"
 ```
 
-This script will:
-1. Normalize dates in all task files
-2. Calculate current week and next week dates
-3. Archive completed tasks (move to completed/ folder)
-4. Grep for tasks by specific dates
-5. Generate all three files (today.md, this-week.md, next-week.md)
+### Step 3: Generate Files
 
-### Step 3: Add Calendar Events (MANDATORY)
+**Read config from `~/.claude/task-management-config/config.yaml` to get `paths.tasks_root`.**
+
+Process ALL fetched tasks and classify them by due date:
+
+#### Task parsing rules:
+
+- **Area mapping**:
+  - Cloud District list → "Trabajo"
+  - Profesional list → "Trabajo"
+  - Personal list → "Personal"
+
+- **Project extraction**: Extract from `[Proyecto]` prefix in title
+  - `[Babe] Revisar presupuesto` → project "Babe", task "Revisar presupuesto"
+  - `Escribir artículo LinkedIn` → no project, task as-is
+
+- **Blocked status**: If notes contain `#esperando`, show as `(espera: REASON)` where REASON is text after `#esperando` on same line, or just `(espera)` if no reason given
+
+- **Overdue**: If `due` < today → append `(atrasada Xd)` where X = days overdue
+
+- **Sort order within each project/category**: Actionable tasks first, then blocked (`#esperando`) tasks last
+
+#### Generate today.md:
+
+Write to `{tasks_root}/today.md`:
+
+```markdown
+---
+date: YYYY-MM-DD
+---
+# Hoy - [Día en español], DD de [mes en español]
+
+## Trabajo
+### [Proyecto]
+- [ ] Tarea actionable
+- [ ] Tarea bloqueada (espera: razón)
+
+### [Otro proyecto]
+- [ ] Otra tarea
+
+## Personal
+### [Categoría]
+- [ ] Tarea personal
+
+## Atrasadas
+### [Proyecto]
+- [ ] Tarea atrasada (atrasada 3d)
+```
+
+Rules for today.md:
+- Include tasks where `due` = today (grouped by area then project)
+- Include overdue tasks (`due` < today) in a separate "## Atrasadas" section at the end
+- Omit empty sections (if no Personal tasks, omit "## Personal")
+- Tasks without project prefix go under "### General" within their area
+
+#### Generate this-week.md:
+
+Write to `{tasks_root}/this-week.md`:
+
+```markdown
+---
+week_start: YYYY-MM-DD
+week_end: YYYY-MM-DD
+---
+# Esta semana - Semana del DD al DD de [mes]
+
+## Atrasadas
+- [ ] [Proyecto] Tarea (atrasada Xd)
+
+## [Día], DD de [mes]
+- [ ] [Proyecto] Tarea
+- [ ] Otra tarea (espera: algo)
+```
+
+Rules for this-week.md:
+- Include tasks from tomorrow through end of current week (Sunday)
+- Group by day, with day headers in Spanish
+- Include overdue tasks in "## Atrasadas" section at the top
+- Tasks show with their `[Proyecto]` prefix in the title
+- Blocked tasks show `(espera: razón)` suffix
+- Skip days with no tasks
+- If no tasks at all, write: `No hay tareas para el resto de la semana.`
+
+#### Generate next-week.md:
+
+Write to `{tasks_root}/next-week.md`:
+
+```markdown
+---
+week_start: YYYY-MM-DD
+week_end: YYYY-MM-DD
+---
+# Próxima semana - Semana del DD al DD de [mes]
+
+## [Día], DD de [mes]
+- [ ] [Proyecto] Tarea
+```
+
+Rules for next-week.md:
+- Include tasks from next Monday through next Sunday
+- Same format as this-week.md
+- Do NOT include overdue tasks (those only go in today.md and this-week.md)
+- If no tasks, write: `No hay tareas para la próxima semana.`
+
+### Step 4: Add Calendar Events (MANDATORY)
 
 **Read config from `~/.claude/task-management-config/config.yaml` to get:**
 - `calendar.enabled` (boolean)
@@ -72,16 +155,16 @@ This script will:
 
 **If `calendar.enabled` is `true`, you MUST complete these steps:**
 
-#### 3.1 Fetch Calendar Events
+#### 4.1 Fetch Calendar Events
 
 Use the Google Calendar MCP tool `mcp__google_workspace__get_events` with:
 - `user_google_email`: value from `calendar.google_email`
 - Make THREE parallel calls for efficiency:
-  1. Today: `time_min` = today, `time_max` = tomorrow
-  2. Rest of week: `time_min` = tomorrow, `time_max` = end of week + 1 day
+  1. Today: `time_min` = today start, `time_max` = tomorrow start
+  2. Rest of week: `time_min` = tomorrow start, `time_max` = end of week + 1 day
   3. Next week: `time_min` = next week start, `time_max` = next week end + 1 day
 
-#### 3.2 Format Events
+#### 4.2 Format Events
 
 For each event, format as:
 - All-day events: `- 📌 Event name`
@@ -89,7 +172,7 @@ For each event, format as:
 
 Sort events by start time within each day.
 
-#### 3.3 Insert Calendar into today.md
+#### 4.3 Insert Calendar into today.md
 
 **IMMEDIATELY after the `# Hoy - ...` header line, insert:**
 
@@ -103,13 +186,13 @@ Sort events by start time within each day.
 
 Use the Edit tool to insert after the header line.
 
-#### 3.4 Insert Calendar into this-week.md and next-week.md
+#### 4.4 Insert Calendar into this-week.md and next-week.md
 
 For EACH day section that has events, transform:
 
 ```markdown
 ## Lunes, 26 de enero
-- [ ] [[task-1]]
+- [ ] [Proyecto] Tarea
 ```
 
 Into:
@@ -120,7 +203,7 @@ Into:
 - 09:00-10:00 - Event 1
 
 ### Tareas
-- [ ] [[task-1]]
+- [ ] [Proyecto] Tarea
 ```
 
 **IMPORTANT:**
@@ -128,7 +211,7 @@ Into:
 - Always add `### Tareas` header before the task list when adding calendar
 - Days without events keep their current format (no changes needed)
 
-#### 3.5 Verification
+#### 4.5 Verification
 
 After inserting calendar, read each file to verify:
 - [ ] today.md has `## Calendario` section
@@ -137,20 +220,25 @@ After inserting calendar, read each file to verify:
 
 If any verification fails, fix it before completing.
 
-### Step 4: Generate Research Digest (Optional)
+### Step 5: Generate Research Digest (Optional)
 
 **Only if `integrations.research_system` is `true` in config.yaml:**
 
 1. Run: `/research-system:generate-research-digest`
-2. Add Research section to today.md after "Ideas en progreso"
+2. Add Research section to today.md after last section
+
+## Spanish day/month names reference
+
+Days: lunes, martes, miércoles, jueves, viernes, sábado, domingo
+Months: enero, febrero, marzo, abril, mayo, junio, julio, agosto, septiembre, octubre, noviembre, diciembre
 
 ## Example Output - today.md
 
 ```markdown
 ---
-date: 2025-10-03
+date: 2026-02-10
 ---
-# Hoy - Jueves, 3 de octubre
+# Hoy - Martes, 10 de febrero
 
 ## Calendario
 - 📌 Recordatorio importante
@@ -158,63 +246,61 @@ date: 2025-10-03
 - 14:00-15:00 - Client meeting
 
 ## Trabajo
+### Babe
+- [ ] Revisar presupuesto RFID
+- [ ] Preparar presentación (espera: datos de Marta)
 
-### Proyecto
-- [ ] [[task-1]]
+### Ventas
+- [ ] Identificar empresas Valencia
 
 ## Personal
-
 ### Admin
-- [ ] [[task-2]]
+- [ ] Renovar seguro coche
 
-## Ideas en progreso
-- [[idea-1]]
+## Atrasadas
+### Tolsa
+- [ ] Enviar factura (atrasada 3d)
 ```
 
 ## Example Output - this-week.md
 
 ```markdown
 ---
-week_start: 2025-10-04
-week_end: 2025-10-06
+week_start: 2026-02-11
+week_end: 2026-02-15
 ---
-# Esta semana - Semana del 4 al 6 de octubre
+# Esta semana - Semana del 11 al 15 de febrero
 
 ## Atrasadas
-- [ ] [[old-task]] (due: 2025-10-01)
+- [ ] [Tolsa] Enviar factura (atrasada 3d)
 
-## Viernes, 4 de octubre
+## Miércoles, 11 de febrero
 ### Calendario
 - 10:00-11:00 - Sprint planning
 
 ### Tareas
-- [ ] [[client-meeting]]
+- [ ] [Babe] Cerrar requisitos fase 2
 
-## Sábado, 5 de octubre
-### Tareas
-- [ ] [[weekly-review]]
+## Viernes, 13 de febrero
+- [ ] [Personal] Comprar billete tren
 ```
 
 ## Example Output - next-week.md
 
 ```markdown
 ---
-week_start: 2025-10-07
-week_end: 2025-10-13
+week_start: 2026-02-16
+week_end: 2026-02-22
 ---
-# Próxima semana - Semana del 7 al 13 de octubre
+# Próxima semana - Semana del 16 al 22 de febrero
 
-## Atrasadas
-- [ ] [[old-task]] (due: 2025-10-01)
-
-## Lunes, 7 de octubre
+## Lunes, 16 de febrero
 ### Calendario
 - 09:00-10:00 - Quarterly planning kickoff
 
 ### Tareas
-- [ ] [[quarterly-planning]]
+- [ ] [Babe] Entregar diseño final
 
-## Miércoles, 9 de octubre
-### Tareas
-- [ ] [[team-sync]]
+## Miércoles, 18 de febrero
+- [ ] [Ventas] Presentación interna
 ```
